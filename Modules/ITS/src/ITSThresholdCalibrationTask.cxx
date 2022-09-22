@@ -86,13 +86,26 @@ void ITSThresholdCalibrationTask::startOfCycle()
 
 void ITSThresholdCalibrationTask::monitorData(o2::framework::ProcessingContext& ctx)
 {
-
-  const auto tunString = ctx.inputs().get<gsl::span<char>>("tunestring");
-  const auto chipDoneString = ctx.inputs().get<gsl::span<char>>("chipdonestring");
-  const auto scanType = ctx.inputs().get<char>("scantype");
-
-  string inString(tunString.begin(), tunString.end());
-  string inStringChipDone(chipDoneString.begin(), chipDoneString.end());
+  
+  string inStringChipDone, inString;
+  char scanType;
+  for (auto&& input : o2::framework::InputRecordWalker(ctx.inputs())) {
+    if (input.header != nullptr && input.payload != nullptr) {
+      const auto* header = o2::framework::DataRefUtils::getHeader<header::DataHeader*>(input);
+    
+      if ((strcmp(header->dataOrigin.str, "ITS") == 0) && (strcmp(header->dataDescription.str, "TSTR") == 0)) {
+        const auto tmpstring = ctx.inputs().get<gsl::span<char>>(input);
+        std::copy(tmpstring.begin(), tmpstring.end(), std::back_inserter(inString));
+      }
+      if ((strcmp(header->dataOrigin.str, "ITS") == 0) && (strcmp(header->dataDescription.str, "QCSTR") == 0)) {
+        const auto tmpstring = ctx.inputs().get<gsl::span<char>>(input);
+        std::copy(tmpstring.begin(), tmpstring.end(), std::back_inserter(inStringChipDone));
+      }
+      if ((strcmp(header->dataOrigin.str, "ITS") == 0) && (strcmp(header->dataDescription.str, "SCANT") == 0)) {
+        scanType = ctx.inputs().get<char>(input);  
+      } 
+    }
+  }
 
   Int_t iScan;
   Double_t calibrationValue;
